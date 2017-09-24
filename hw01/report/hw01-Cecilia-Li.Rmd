@@ -1,0 +1,236 @@
+---
+title: "hw01-Cecilia-Li"
+output: github_document
+---
+```{r}
+load("data/nba2017-salary-points.RData")
+```
+```{r}
+ls()
+```
+**1) A Bit of Data Processing**
+```{r}
+#Create a New salary Variable
+salary_new <- 
+  as.numeric(format(round(salary / 1000000, 2), nsmall <-  2))
+```
+```{r}
+#Create a New experience Variable
+experience_new <- as.integer(replace(experience,experience == 'R',0))
+```
+```{r}
+#Create a New position Variable
+position_new <- factor(position)
+#Create More Descriptive Labels
+levels(position_new) <-
+  c('center',
+  'small_fwd',
+  'power_fwd',
+  'shoot_guard',
+  'point_guard')
+  table(position)
+```
+**2) Scatterplot of Points and Salary**
+```{r}
+plot(
+  points,
+  salary_new,
+  main = 'Scatterplot of Points and Salary',
+  xlab = 'Points',
+  ylab = 'Salary (in millions)',
+  col = 'red'
+  )
+```
+**3) Correlation between Points and Salary**
+```{r}
+#number of individuals
+n <- length(player)
+n
+#mean of variable x (points)
+mean_x <- sum(points)/n
+mean_x
+#mean of variable y (salaries)
+mean_y <- sum(salary_new)/n
+mean_y
+#variance of x
+var_x <- sum((points - mean_x)**2)/(n-1)
+var_x
+#variance of y
+var_y <- sum((salary_new - mean_y)**2)/(n-1)
+var_y
+#sd of x
+sd_x <- sqrt(var_x)
+sd_x
+#sd of y
+sd_y <- sqrt(var_y)
+sd_y
+#covariance between X and Y
+covariance <- sum((points-mean_x)*(salary_new-mean_y))/(n-1)
+covariance
+#correlation between X and Y
+correlation <- covariance/((sd_x)*(sd_y))
+correlation
+```
+**4) Simple Linear Regression**
+```{r}
+#b1 the slope term
+b1 <- (correlation)*(sd_y/sd_x)
+b1
+#b0 the intercept
+b0 <- mean_y-(b1*mean_x)
+b0
+#The vector of predicated values
+y_hat <- b0 + b1*points
+y_hat
+#Summary statistics of y_hat
+summary(y_hat)
+```
+_1）Regression Equation_
+
+\(\hat Y = b_0 + b_1*X \)
+
+\(\hat Y = 0.008557567*X + 1.509077\)
+
+
+_2）Interpretation of the slope coefficient_
+
+\[b_1 = 0.008557567\] is the slope coefficient of the regression equation, and it tells the amount of change in salary that can be expected to the result from an unit increase in point.  
+
+_3）Interpretation of the intercept_
+
+\[b_0 = 1.509077\] is the intercept of the regression equation, and it represents the expected value of y (salary) when x (points) equals 0. 
+
+_4）Predicted salary_
+
+0 points: 1.509077 million dollars
+
+100 points: 2.3648337 million dollars
+
+500 points: 5.7878605 million dollars
+
+1000 points: 10.060644 million dollars
+
+2000 points: 18.624211 million dollars 
+
+**5) Plotting the regression line**
+```{r}
+plot(
+  points,
+  salary_new,
+  main = 'Regression and Lowess Lines',
+  xlab = 'Points',
+  ylab = 'Salary (in millions)',
+  col = 'grey'
+  )
+abline(a = 1.509077, b = 0.008557567, lwd = 4, col = 'blue')
+lines(lowess(points, salary_new), lwd = 4, col = 'red')
+text(x = c(2400,2500), y = c(20,30) , labels = c('regression','lowess'), col = c('blue','red'))
+```
+**6) Regression residuals and Coefficient of Determination R^2**
+```{r}
+#the vector of residuals
+is.vector(residuals)
+#the Residual Sum of Squares
+RSS<- sum((salary_new - y_hat) ** 2)
+RSS
+#the Total Sum of Squares
+TSS <- sum((salary_new - mean_y)**2)
+TSS
+#the coefficient of determination
+R <- 1 - (RSS/TSS)
+R
+```
+
+**7) Exploring Position and Experience**
+```{r}
+#A scatterplot of Years-of-Experience and Salary
+plot(
+  experience_new,
+  salary_new,
+  main = 'Scatterplot with lowess smooth',
+  xlab = 'Years of Experience',
+  ylab = 'Salary (in millions)',
+  col = 'grey'
+  )
+lines(lowess(experience_new, salary_new), lwd = 4, col = 'red')
+```
+
+#3D-scatterplot of Points, Experience, and Salary
+install.packages('scatterplot3d')
+```{r}
+
+```
+
+
+```{r}
+scatterplot3d::scatterplot3d (points, experience_new, salary_new, xlab = 'points', ylab = 'experience', zlab = 'salary', main = '3D Scatterplot', color = 'red', scale.y = 1.3, angle = 55)
+```
+
+```{r}
+#Boxplot
+boxplot(salary_new ~ position_new, xlab = 'Position', ylab = 'Salary (in millions)')
+```
+_1) concise descriptions for the plots of this section_
+
+Scatterplot:
+
+From "Scatterplot with lowess smooth"", it is shown that salary is related with the years in experience. As years of experience increases up until 7, salary also increases. After playing for 7 years, the salaries plateau and decrease after that. The graph suggests that salaries of NBA players increase in their early years and decrease as time progresses. 
+
+3D Scatterplot:
+
+The 3D scatterplot represents the relationship between points, salary, and experience, with on the x-axis, z-axis and on the y-axis respectively.
+
+Boxplot: 
+
+The boxplot presents the relationship between position and salary. This shows the min, max, median, and quartiles of each distribution.
+
+_2) does Experience seem to be related with Salary?_
+
+Yes. From the 3D scatterplot, it could be approximately concluded that there is a positive relationship between experience and salary. Compared with players with more than 10 years of experience, those have 5 years or fewer experience earn relatively lower salaries according to the 3D scatterplot. So as years of experience increase, salaries increase as well.
+
+
+_3) does Position seem to be related with Salary?_
+
+No. According to the boxplot showing 5 different positions, the median salaries for players with different positions are roughly the same. The distributions are slightly different, for example the middle 50 % of players with position center earn higher salaries than those play point guard. But the five distributions are both right-skewes, thus it's hard to draw a conclusion about the relationship between salaries and positions. 
+
+**8) Comments and Reflections**
+
+• What things were hard, even though you saw them in class?
+
+Using the right functions, and learning to apply them was extremely difficult. Also, writing out the code without a structure taught was also hard. 
+
+• What was easy(-ish) even though we haven’t done it in class?
+
+Finding the mean/length/standard deviation was easy given my background in statistics.
+
+• If this was the first time you were using git, how do you feel about it?
+
+It is extremely complicated and confusing. 
+
+• If this was the first time using GitHub, how do you feel about it?
+
+It is extremely complicated and confusing. 
+
+• Did you need help to complete the assignment? If so, what kind of help? Who helped you?
+
+I needed help with the assignment set-up and got my lab GSI to walk me through the tutorial. 
+
+• How much time did it take to complete this HW?
+
+Around 8 hours.
+
+• What was the most time consuming part?
+
+Learning the functions and writing the code, because we were not taught this in lecture. 
+
+• Was there anything that you did not understand? or fully grasped?
+
+I still do not know how to memorize all the functions and knowing the syntax. 
+
+• Was there anything frustrating in particular?
+
+Learning how to push my assignment onto Github. 
+
+• Was there anything exciting? Something that you feel proud of? (Don’t be shy, we won’t tell anyone).
+
+I like to convince myself that I know how to code in statistics when working with RStudio.
