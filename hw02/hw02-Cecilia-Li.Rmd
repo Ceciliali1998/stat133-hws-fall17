@@ -1,0 +1,252 @@
+---
+title: "hw02-Cecilia-Li"
+author: Cecilia li
+output: github_document
+---
+
+**1) Create a data dictionary**
+
+Finished data direction is saved as a md file inside the data folder of the hw02 subdirectory.
+
+**2) Import Data in R**
+
+```{r}
+data1 <-
+  read.csv(
+  'nba2017-player-statistics.csv',
+  colClasses = c(
+  'Player' = 'character',
+  'Team' = 'character',
+  'Experience' = 'character',
+  'Salary' = 'double'
+  )
+  )
+  str(data1)
+```
+```{r}
+library(readr)
+```
+```{r}
+data2 <-
+  read_csv(
+  'nba2017-player-statistics.csv',
+  col_types = list(
+  Player = col_character(),
+  Team = col_character(),
+  Position = col_factor(c('C', 'PF', 'PG','SF', 'SG')),
+  Experience = col_character(),
+  Salary = col_double(),
+  Rank = col_integer(),
+  Age = col_integer(),
+  GP = col_integer(),
+  GS = col_integer(),
+  MIN = col_integer(),
+  FGM = col_integer(),
+  FGA = col_integer(),
+  Points3 = col_integer(),
+  Points3_atts = col_integer(),
+  Points2 = col_integer(),
+  Points2_atts = col_integer(),
+  FTM = col_integer(),
+  FTA = col_integer(),
+  OREB = col_integer(),
+  DREB = col_integer(),
+  AST = col_integer(),
+  STL = col_integer(),
+  STL = col_integer(),
+  BLK = col_integer(),
+  TO = col_integer()
+  ))
+str(data2)
+                
+```
+**3) Right after importing the data**
+```{r}
+data1$Experience[data1$Experience == "R"] <- "1" 
+Experience <- as.integer(data1$Experience)
+data1
+```
+**4) Performance of players**
+```{r}
+library(dplyr)
+library(ggplot2)
+Missed_FG <- data1$FGA - data1$FGM
+Missed_FT <- data1$FTA - data1$FTM
+PTS <- (data1$Points2) * 2 + (data1$Points3) * 3 + data1$FTM
+REB <- data1$DREB + data1$OREB
+data1$EFF <-
+(PTS + REB + data1$AST + data1$STL + data1$BLK - Missed_FG - Missed_FT - data1$TO) / data1$GP
+summary(data1$EFF)
+```
+```{r}
+hist(
+  data1$EFF,
+  col = 'grey',
+  xlab = "EFF",
+  ylab = "Frequency",
+  main = 'Histogram of Efficiency (EFF)'
+  )
+```
+
+```{r}
+library(dplyr)
+top_10 <- slice(arrange(data1, desc(EFF)), 1:10)
+top_10
+```
+
+```{r}
+#Negative EFF
+negative <- select(filter(data1, EFF <0), Player)
+negative
+```
+
+```{r}
+#Correlation between EFF and PTS
+cor(data1$EFF, PTS)
+#Correlation between EFF and REB
+cor(data1$EFF, REB)
+#Correlation between EFF and AST
+cor(data1$EFF, data1$AST)
+#Correlation between EFF and STL
+cor(data1$EFF, data1$STL)
+#Correlation between EFF and BLK
+cor(data1$EFF, data1$BLK)
+#Correlation between EFF and Missed FG
+-cor(data1$EFF, Missed_FG)
+#Correlation between EFF and Missed FT
+-cor(data1$EFF, Missed_FT)
+#Correlation between EFF and TO
+-cor(data1$EFF, data1$TO)
+#Correlation between EFF and GP
+cor(data1$EFF, data1$GP)
+```
+
+```{r}
+#Display the computed correlations in descending order, either in a vector or a data frame. And create a barchart with the correlations.
+my_table <-
+  data.frame(
+  col1 = c(
+  0.8588644,
+  0.7634501,
+  0.6689232,
+  0.6957286,
+  0.5679571,-0.7722477
+  ,-0.7271456,-0.8003289
+  ),
+  col2 = c('PTS', 'REB', 'AST', 'STL', 'BLK', 'Missed FG', 'Missed FT', 'TO')
+  )
+names(my_table) <- c('Correlations','Stats')
+my_table <- arrange(my_table, desc(Correlations))
+barplot(
+  as.numeric(my_table$Correlations),
+  ylim = c(-1, 1),
+  space = c(0.2,0),
+  main = 'Correlations between Player Stats and EFF',
+  col = c('grey', 'grey', 'grey', 'grey', 'grey', 'coral', 'coral', 'coral'),
+  names.arg = c('PTS', 'REB', 'STL', 'AST', 'BLK', 'Missed FT', 'Missed FG', 'TO'),
+  cex.names = 0.6,
+  border = NA
+  )
+  abline(h = 0)
+```
+**5) Efficiency and Salary**
+```{r}
+scatter.smooth(
+  x = data1$EFF,
+  y = data1$Salary,
+  xlab = "Efficiency",
+  ylab = "Salary",
+  main = "Efficiency and Salary"
+  )
+  lines(lowess(data1$EFF, data1$Salary),
+  lwd = 3,
+  col = 'red')
+  text(30,
+  28000000,
+  labels = 'lowess',
+  cex = 1.5,
+  col = 'red')
+```
+
+```{r}
+#Linear correlation coefficient
+cor(data1$EFF, data1$Salary)
+```
+According to the calculation and the graph above, the relationship between these two variables, Efficiency and Salary, are likely to be correlated. By definition, a correlation coefficient is a statistical measure of the degree to which changes to the value of one variable predict change to the value of another. With 0.66 correlation, it means that 1 unit change in efficiency approximately contributed to 0.66 change in salary. 
+
+```{r}
+#Players that have an MPG value of 20 or more minutes per game.
+new_table <- filter(data1, (data1$MIN / data1$GP) >= 20)
+player2 <- select(filter(data1, (data1$MIN / data1$GP) >= 20), Player)
+player2
+```
+```{r}
+new_table
+```
+
+```{r}
+# Use this data frame to create a scatterplot between Efficiency and Salary, including a lowess line
+scatter.smooth(x = new_table$EFF,
+               y = new_table$Salary,
+               main = "Scatterplot between Efficiency and Salary (MPG>20)",
+               xlab = "Efficiency",
+               ylab = "Salary"
+                 )
+               lines(lowess(new_table$EFF, new_table$Salary),
+               lwd = 3,
+               col = 'red')
+               text(30,
+               28000000,
+               labels = 'lowess',
+               cex = 1.5,
+               col = 'red')
+```
+
+```{r}
+#Linear correlation coefficient
+cor(new_table$Salary, new_table$EFF)
+```
+_What can you say about the relationship between these two variables for the set of “more established players”_
+
+The relationship between EFF and Salary in the group of the more established players is hard to observe, and whether or not this has a correlation is unknown. This is because that the correlation calculated from the "More Established Players" is smaller than that calculated from the whole data set.
+
+
+**6) Comments and Reflections**
+
+•What things were hard, even though you saw them in class/lab?
+
+Applying functions was really hard, and determing the data set for usage.
+
+• What was easy(-ish) even though we haven’t done it in class/lab?
+
+Analyzing graphs was easy because of my prior experience in data science. 
+
+• Did you need help to complete the assignment? If so, what kind of help?
+
+Yes, I consulted online resources on the code formats and applications.
+
+• How much time did it take to complete this HW?
+
+Around 5 hours.
+
+• What was the most time consuming part?
+
+The most time consuming part was having to get all the code running correctly and rewriting the code every time. 
+
+• Was there anything that you did not understand? or fully grasped?
+
+I do not know how to vary the code based on different functions.
+
+• Was there anything frustrating in particular?
+
+The conclusions are very open ended, providing us with no hint to go about in certain directions.
+
+• Was there anything exciting? Something that you feel proud of? (Don’t be shy, we
+won’t tell anyone).
+
+Learning how to download data sets and loading onto the file, the set up, and finishing the assignment was challenging but rewarding. 
+
+
+
+
+
