@@ -1,0 +1,183 @@
+---
+title: "hw03-Cecilia-Li"
+author: "Cecilia Li"
+date: "10/15/2017"
+output: github_document
+---
+
+# Loading Datas
+```{r}
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+roster <- "https://raw.githubusercontent.com/ucb-stat133/stat133-fall-2017/master/data/nba2017-roster.csv"
+destination <- "nba2017-roster.csv"
+download.file(url=roster,destfile = destination)
+roster <- read.csv("nba2017-roster.csv",stringsAsFactors=FALSE)
+
+stats <- "https://raw.githubusercontent.com/ucb-stat133/stat133-fall-2017/master/data/nba2017-stats.csv"
+download.file(url=stats,destfile = "nba2017-stats.csv")
+stats <- read.csv("nba2017-stats.csv",stringsAsFactors = FALSE)
+
+
+# Adding new variables
+stat1 <-
+  mutate(
+    stats,
+    missed_fg = stats$field_goals_atts - stats$field_goals_made,
+    missed_ft = stats$points1_atts - stats$points1_made,
+    points = stats$points1_made + 2 * stats$points2_made + 3 * stats$points3_made,
+    rebounds = stats$off_rebounds + stats$def_rebounds
+  )
+
+
+stat2 <-
+  mutate(
+    stat1,
+    efficiency = (
+      stat1$points + stat1$rebounds + stat1$assists +
+        stat1$steals + stat1$blocks - stat1$missed_fg -
+        stat1$missed_ft - stat1$turnovers
+    ) / stat1$games_played
+  )
+
+
+
+# Merging tables
+data <- merge(stat2, roster)
+
+
+# Creating nba2017-teams.csv
+teams <-
+  data %>% group_by(team) %>% summarise(
+    experience = round(sum(experience), 2),
+    salary = sum(round(salary /
+                         1000000, 2)),
+    points3 = sum(points3_made),
+    points2 = sum(points2_made),
+    free_throws = sum(points1_made),
+    points = sum(points3 + points2 + free_throws),
+    off_rebounds = sum(off_rebounds),
+    def_rebounds = sum(def_rebounds),
+    assists = sum(assists),
+    steals = sum(steals),
+    blocks = sum(blocks),
+    turnovers = sum(turnovers),
+    fouls = sum(fouls),
+    efficiency = sum(efficiency)
+  )
+```
+```{r}
+# NBA Teams ranked by Total Salary
+ggplot(teams, aes(x=reorder(team, salary), y=salary)) +
+  geom_bar(stat='identity') +
+  geom_hline(yintercept = mean(teams$salary), color="red", size = 2) +
+  ggtitle("NBA Teams ranked by Total Salary") +
+  labs (y = "Salary in Millions", x = "Teams") +
+  coord_flip()
+  
+```
+
+```{r}
+# NBA Teams ranked by Total Points
+ggplot(teams, aes(x = team, y = points))+
+  geom_bar(stat = 'identity') + labs(y = 'Total Points') +
+  labs(x = 'Team') + labs(title = 'NBA Teams ranked by Total Points') +
+  coord_flip() + geom_hline(yintercept = mean(teams$points) , col = 'red', size = 2)+
+      scale_x_discrete(limits = teams$team[order(teams$points)])
+```
+```{r}
+# NBA Teams ranked by Total Efficiency
+ggplot(teams, aes(x = team, y = efficiency))+
+  geom_bar(stat = 'identity') + labs(y = 'Total Efficiency') +
+  labs(x = 'Team') + labs(title = 'NBA Teams ranked by Total Efficiency') +
+  coord_flip() + geom_hline(yintercept = mean(teams$efficiency) , col = 'red', size = 2)+
+      scale_x_discrete(limits = teams$team[order(teams$efficiency)])
+```
+_Provide concise descriptions of the obtained rankings so far_
+
+The general distributions of the three plots are roughly the same. However, when ranked by total salary, CLE, LAC, and TOR are the top 3 teams, with CLE exceeding a lot than any other teams. When ranked by total points, GSW, LAC, and MIN are the top 3, and their total points are roughly the same. And when ranked by total efficiency, CLE, GSW, and DEN are the top 3. Each ranking methond provides different results, so it might be a bit hard to generalize a pattern from those 3 plots. However, just by looking at the top 3 teams, GSW and CLE seem to slightly overperform than other teams.
+
+# Principal Components Analysis (PCA)
+
+```{r}
+pca <- prcomp(teams[c('points3', 'points2', 'free_throws', 'off_rebounds', 'def_rebounds',
+                      'assists', 'steals', 'blocks', 'turnovers', 'fouls')], scale. = TRUE)
+eigs1 <- data.frame(
+  eigenvalue = round(pca$sdev^2, 4),
+  prop = round(pca$sdev^2 / sum(pca$sdev^2), 4),
+  cumprop = cumsum(round(pca$sdev^2 / sum(pca$sdev^2), 4))
+)
+eigs1
+```
+
+# Use the first two PCs to get a scatterplot of the teams
+
+```{r}
+plotted <- data.frame(pca$x[ , 1:2])
+ggplot(data=plotted, aes(x=PC1, y=PC2)) + 
+  geom_text(aes(label=teams$team))+
+  geom_hline(aes(yintercept=0))+
+  geom_vline(aes(xintercept=0)) +
+  ggtitle("PCA plot (PC1 and PC2)")
+```
+# Interpretation of PCs
+```{r}
+pca
+```
+# Index based on PC1
+```{r}
+z1 = pca$x[ ,1]
+s1 = 100 * ((z1 - min(z1))/(max(z1)-min(z1)))
+new_team <- mutate(teams, s1)
+```
+
+```{r}
+ggplot(new_team, aes(x=reorder(team,s1),y=s1))+
+  geom_bar(stat = 'identity') + 
+  coord_flip() + 
+  ggtitle('NBA Teams ranked by scaled PC1') +
+  labs (y = "First PC (scaled from 0 to 100)", x = "Teams")
+```
+_Brief description of the PC1 index to rank the teams._
+
+PC1 collects the data with the maximum variance, so it provides us with the most comprehensive index of the data. Thus PC1 index gives a more reliable rank of the NBA teams, with GSW, MIN, and SAS the top 3. 
+# Comments and Reflections
+
+• Was this your first time working on a project with such file structure? If yes, how do you feel about it?
+
+This assignment is very complicated because of the file structure, and I feel like the structure really takes a lot of time, than the actual coding. 
+
+• Was this your first time using relative paths? If yes, can you tell why they are important for reproducibility purposes?
+
+It is the first time I am using relative paths and this is important because if the files are replaced, they will still be found or opened due to their relative positions in the system. 
+
+• Was this your first time using an R script? If yes, what do you think about just writing code?
+
+Yes, it was my first time using R script. It feels very wierd at first with just the written code on display, but this allows space for creativity. 
+
+• What things were hard, even though you saw them in class/lab?
+
+Creating and setting up the file structure and relative paths. 
+
+• What was easy(-ish) even though we haven’t done it in class/lab?
+
+Application of formulas was relatively easy.
+
+• Did anyone help you completing the assignment? If so, who?
+
+I asked my GSI to help me on some of the set up of this lab.
+
+• How much time did it take to complete this HW?
+
+~17 hours.
+
+
+• What was the most time consuming part?
+
+Learning functions and PCA myself.
+
+
